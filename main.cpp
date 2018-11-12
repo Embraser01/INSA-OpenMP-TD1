@@ -119,10 +119,8 @@ Config parseConfig(int argc, char **argv) {
 
 long computeFun(const Config &config, std::vector<double> &v1, std::vector<double> &v2, const Func &type) {
     long acc = 0;
-
     for (int i = 0; i < config.factor; ++i) {
-        std::cout << "-- Starting round " << i << " with size: " << config.size << " and " << config.core << " core(s)"
-                  << std::endl;
+//        std::cout << "-- Starting round " << i << std::endl;
 
         auto start = std::chrono::_V2::system_clock::now();
 
@@ -142,7 +140,7 @@ long computeFun(const Config &config, std::vector<double> &v1, std::vector<doubl
 
         acc += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     }
-    return acc;
+    return (acc / config.factor);
 }
 
 int main(int argc, char **argv) {
@@ -155,14 +153,40 @@ int main(int argc, char **argv) {
     if (config.progressive) {
         // TODO Progressive mode
         //  Increase size with cores and without restarting the app
+        Config tempConfig = config;
+        tempConfig.core = 1;
+
+        while (tempConfig.core <= config.core) {
+            omp_set_num_threads(tempConfig.core);
+
+            std::cout << "\tUsing following config (size, cores): " << tempConfig.size << ", " << tempConfig.core
+                      << std::endl;
+
+            std::vector<double> v1 = generateVector(tempConfig.size);
+            std::vector<double> v2 = generateVector(tempConfig.size);
+
+            long accAdd = computeFun(tempConfig, v1, v2, addFunc);
+            long accSum = computeFun(tempConfig, v1, v2, sumFunc);
+            long accMult = computeFun(tempConfig, v1, v2, multFunc);
+
+            std::cout << "Operation took approximately (add, sum, mult) :" << std::endl
+                      << accAdd << "ms | " << accSum << "ms | " << accMult << "ms\n";
+
+            // Update config
+            tempConfig.size *= 2;
+            tempConfig.core *= 2;
+        }
     } else {
         omp_set_num_threads(config.core);
 
         std::vector<double> v1 = generateVector(config.size);
         std::vector<double> v2 = generateVector(config.size);
 
-        long acc = computeFun(config, v1, v2, sumFunc);
-        std::cout << "Operation took approximately " << (acc / config.factor) << "ms\n";
+        long accAdd = computeFun(config, v1, v2, addFunc);
+        long accSum = computeFun(config, v1, v2, sumFunc);
+        long accMult = computeFun(config, v1, v2, multFunc);
+        std::cout << "Operation took approximately (add, sum, mult) :" << std::endl
+                  << accAdd << "ms | " << accSum << "ms | " << accMult << "ms\n";
     }
 
     return 0;
