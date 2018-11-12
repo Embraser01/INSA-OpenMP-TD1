@@ -162,8 +162,8 @@ int main(int argc, char **argv) {
         std::vector<double> v2 = generateVector(config.size);
 
         long acc = computeFun(config, v1, v2, sumFunc);
+        std::cout << "Operation took approximately " << (acc / config.factor) << "ms\n";
     }
-    std::cout << "Operation took approximately " << (acc / config.factor) << "ms\n";
 
     return 0;
 }
