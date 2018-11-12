@@ -9,7 +9,8 @@ typedef struct Config {
     unsigned int core = 1;
     unsigned int size = 0;
     unsigned int factor = 10;
-    bool progressive = false;
+    bool sequence = false;
+    bool increase = false;
 } Config;
 
 
@@ -76,6 +77,18 @@ double sum(std::vector<double> &v) {
     return acc;
 }
 
+std::vector<double> mult(std::vector<double> &v, double fac) {
+    std::vector<double> result(v.size());
+
+#pragma omp parallel for shared(result)
+    for (int i = 0; i < v.size(); ++i) {
+        result[i] = v[i] * fac;
+    }
+
+    return result;
+}
+
+
 Config parseConfig(int argc, char **argv) {
     // Shut GetOpt error messages down (return '?'):
     opterr = 0;
@@ -83,10 +96,13 @@ Config parseConfig(int argc, char **argv) {
 
     Config config;
 
-    while ((opt = getopt(argc, argv, "pc:s:f:")) != -1) {
+    while ((opt = getopt(argc, argv, "ipc:s:f:")) != -1) {
         switch (opt) {
             case 'p':
-                config.progressive = true;
+                config.sequence = true;
+                break;
+            case 'i':
+                config.increase = true;
                 break;
             case 's':
                 config.size = static_cast<unsigned int>(std::stoi(optarg));
@@ -132,7 +148,7 @@ long computeFun(const Config &config, std::vector<double> &v1, std::vector<doubl
                 sum(v1);
                 break;
             case multFunc:
-                // TODO Add mult
+                mult(v1, 0.8930114057);
                 break;
         }
 
@@ -150,9 +166,7 @@ int main(int argc, char **argv) {
     std::cout << "Core used: " << config.core << std::endl;
     std::cout << "Factor used: " << config.factor << std::endl;
 
-    if (config.progressive) {
-        // TODO Progressive mode
-        //  Increase size with cores and without restarting the app
+    if (config.sequence) {
         Config tempConfig = config;
         tempConfig.core = 1;
 
@@ -173,7 +187,7 @@ int main(int argc, char **argv) {
                       << accAdd << "ms | " << accSum << "ms | " << accMult << "ms\n";
 
             // Update config
-            tempConfig.size *= 2;
+            if (config.increase) tempConfig.size *= 2;
             tempConfig.core *= 2;
         }
     } else {
